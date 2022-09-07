@@ -1,0 +1,7 @@
+keystore:
+  path: ${JVMFY_KEYSTORE:src\main\resources\econtract_30092021.p12}
+  password: ${JVMFY_KEYSTORE_PASSWORD:826341}
+  certificate-alias: client
+
+timestamp-authority:
+  url: http://sha256timestamp.ws.symantec.com/sha256/timestamp
