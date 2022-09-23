@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.service.PdfService;
 import com.example.demo.service.SigningService;
 import com.example.demo.utils.CreateVisibleSignature;
+import com.example.demo.utils.CreateVisibleSignature2;
 import com.example.demo.utils.ShowSignature;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.awt.geom.Rectangle2D;
 import java.io.*;
 import java.security.KeyStore;
 
@@ -112,6 +114,46 @@ public class ConverterController {
             signing.setVisibleSignatureProperties("Phan Luong Thuan", "Signer's office", "Signing document", 0, page, true);
             signing.setExternalSigning(externalSig);
             signing.signPDF(documentFile, signedDocumentFile, tsaUrl);
+
+            return "OK đã ký";
+        } catch (Exception e) {
+            log.error("Cannot generate signwithImage file", e);
+            return "Ngủm rồi :(((";
+        }
+    }
+
+    @GetMapping(value = "/signwithImagev2", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String signwithImageV2() {
+        try {
+
+            //keystone signature
+            File ksFile = new File(keyStorePath);
+            KeyStore keystore = KeyStore.getInstance("PKCS12");
+            char[] pin = keyStorePassword.toCharArray();
+            try (InputStream is = new FileInputStream(ksFile))
+            {
+                keystore.load(is, pin);
+            }
+
+            boolean externalSig = true;
+            // file cần ký
+            String pathPdf = "src/testpdf.pdf";
+
+            byte[] signatureImage = this.pdfService.generatePdfwithImage("src/signature.png");
+//            InputStream imageStream = new ByteArrayInputStream(signatureImage);
+            File documentFile = new File(pathPdf);
+            CreateVisibleSignature2 signing = new CreateVisibleSignature2(keystore, pin.clone());
+
+            File signedDocumentFile;
+            String name = documentFile.getName();
+            String substring = name.substring(0, name.lastIndexOf('.'));
+            signedDocumentFile = new File(documentFile.getParent(), substring + "_signed2.pdf");
+
+            signing.setImageFile(new File("src/signature.png"));
+
+            signing.setExternalSigning(externalSig);
+            Rectangle2D humanRect = new Rectangle2D.Float(100, 200, 150, 50);
+            signing.signPDF(documentFile, signedDocumentFile, humanRect, tsaUrl, "Signature1");
 
             return "OK đã ký";
         } catch (Exception e) {

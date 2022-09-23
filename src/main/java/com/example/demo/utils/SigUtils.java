@@ -52,13 +52,11 @@ import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.cms.Attribute;
 import org.bouncycastle.asn1.cms.AttributeTable;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cms.CMSException;
-import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.cms.SignerInformation;
-import org.bouncycastle.cms.SignerInformationVerifier;
+import org.bouncycastle.cms.*;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.tsp.TSPException;
@@ -90,6 +88,34 @@ public class SigUtils
      */
     public static int getMDPPermission(PDDocument doc)
     {
+        COSBase cosBasea;
+        for (PDSignature sig : doc.getSignatureDictionaries())
+        {
+            // "Approval signatures shall follow the certification signature if one is present"
+            // thus we don't care about timestamp signatures
+            if (COSName.DOC_TIME_STAMP.equals(sig.getCOSObject().getItem(COSName.TYPE)))
+            {
+                continue;
+            }
+            if (sig.getCOSObject().containsKey(COSName.CONTENTS))
+            {
+                byte[] signContents = sig.getContents();
+                CMSSignedData signedData;
+                try {
+                    signedData = new CMSSignedData(signContents);
+                    Set<AlgorithmIdentifier> algorithmIdentifiers = signedData.getDigestAlgorithmIDs();
+                    for(AlgorithmIdentifier identifier:algorithmIdentifiers){
+                        String a = identifier.getAlgorithm().toString();
+                        System.out.println(a);
+                    }
+                    SignerInformationStore informationStore = signedData.getSignerInfos();
+                }catch (CMSException ex){
+                    System.out.println(ex);
+                }
+
+                cosBasea = sig.getCOSObject().getItem(COSName.CONTENTS);
+            }
+        }
         COSDictionary permsDict = doc.getDocumentCatalog().getCOSObject()
                 .getCOSDictionary(COSName.PERMS);
         if (permsDict != null)
@@ -152,7 +178,7 @@ public class SigUtils
             }
             if (sig.getCOSObject().containsKey(COSName.CONTENTS))
             {
-                throw new IOException("DocMDP transform method not allowed if an approval signature exists");
+//                throw new IOException("DocMDP transform method not allowed if an approval signature exists");
             }
         }
 
@@ -168,7 +194,7 @@ public class SigUtils
         COSDictionary referenceDict = new COSDictionary();
         referenceDict.setItem(COSName.TYPE, COSName.SIG_REF);
         referenceDict.setItem(COSName.TRANSFORM_METHOD, COSName.DOCMDP);
-        referenceDict.setItem(COSName.DIGEST_METHOD, COSName.getPDFName("SHA1"));
+        referenceDict.setItem(COSName.DIGEST_METHOD, COSName.getPDFName("SHA256"));
         referenceDict.setItem(COSName.TRANSFORM_PARAMS, transformParameters);
         referenceDict.setNeedToBeUpdated(true);
 
